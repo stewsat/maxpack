@@ -16,6 +16,8 @@
 ## along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 export DEFAULT_CONFIG=$HOME/.local/share/maxpack/default/maxpack.cfg
+export MAXPACK_RAW_GITHUB_URL='https://raw.githubusercontent.com/achengli/maxpack/refs/heads/main'
+export MAXPACK_HOST_URL="NOT IMPLEMENTED"
 
 function maxpack-load-config(){
 """
@@ -66,11 +68,36 @@ function maxpack-install(){
     echo "Latest version will be installed"
   fi
 
+  # `out_code' mark which was the point the package wasn't found.
+  local out_code=0
   # search locally
-  
+  if [ -e $MAXPACK_HOME/.cache/packages.list ]; then
+    local package
+    while read line
+    do
+      if [ -n "$(echo $line | grep -E $package_name)" ]; then
+        $remote_package=$(echo $line | grep -Eo "[[:alnum:]_/\.-]+\$")
+      else
+        out_code=1
+      fi
+    done < $MAXPACK_HOME/.cache/packages.list
+  else
+    curl -o $MAXPACK_RAW_GITHUB_URL'/cfg/packages.list'
+  fi
   # search in remote package collection
   
+  while read line
+  do
+    echo $line
+  done < $(curl $MAXPACK_HOST)
+  local remote_package=$(curl $MAXPACK_HOST_URL) | grep -Eo "[[:alnum:]_/\.-]+\$")
+  if [ -z "$remote_package" ];then 
+    out_code=2
+  fi
+
   # go to the url directly
+  if [ $(curl $package) ]; then  
+
 }
 
 function maxpack-remove(){
