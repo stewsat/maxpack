@@ -96,7 +96,15 @@ function maxpack-install(){
   fi
 
   # go to the url directly
-  if [ $(curl $package) ]; then  
+  if [ -z "$(curl $package)" ]; then  
+    out_code=3
+  fi
+
+  if [ $out_code == 0 ]; then
+  elif [ $out_code == 1 ]; then
+  elif [ $out_code == 2 ]; then
+  else
+  fi
 
 }
 
