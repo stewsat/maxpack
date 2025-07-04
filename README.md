@@ -1,7 +1,4 @@
----
-title: Maxpack
-description: A maxima package manager
-author: Yassin Achengli
+# Maxpack
 ---
 ![maxpack icon](maxpack.png)
 
