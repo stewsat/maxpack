@@ -34,3 +34,5 @@ mkdir -p $HOME/.maxima/
 echo "/* Maxpack initializing */" >> $HOME/.maxima/maxima-init.mac
 echo 'load("operatingsystem")$' >> $HOME/.maxima/maxima-init.mac
 echo 'load(concat(getenv("HOME"), "/.maxpack/init.mac"))$' >> $HOME/.maxima/maxima-init.mac
+
+source $HOME/.maxpack/init.sh
