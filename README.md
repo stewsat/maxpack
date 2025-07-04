@@ -1,5 +1,3 @@
-# Maxpack
----
 ![maxpack icon](maxpack.png)
 
 Maxima has a lot of useful libraries and scripts were done but are 
