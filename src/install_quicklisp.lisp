@@ -1,4 +1,4 @@
-;; Maxpack init script
+;; Quicklisp installation script
 ;; ---
 ;; Copyright (C) 2025 - Yassin Achengli BY-NC
 ;; 
@@ -28,24 +28,9 @@
 ;; POSSIBILITY OF SUCH DAMAGE. 
 
 (require :asdf)
-(ql:quickload "cl-ppcre")
 
-(defconstant MAXPACKDIR (uiop:strcat (uiop:getenv "HOME") "/.maxpack/packages/"))
-
-(defun maxpack--git-clone (url &key (server :github))
-  (if (= server 'github)
-    (uiop:run-program (uiop:strcat "git clone https://github.com/" url ".git "
-                                   MAXPACKDIR 
-                                   (cdr (uiop:split-string url "/"))))
-    (if (= server nil)
-      (uiop:run-program (uiop:strcat "git clone " url ".git " MAXPACKDIR
-                                     (car (uiop:split-string (cdr uiop:split-string url "/") ".")))))
-    (error (uiop:strcat "Couldn't clone repository " url))))
-
-(defun maxpack#install ()
-    (dolist (line (uiop:read-file-lines "../package.list"))
-      (if (not (uiop:directory-pathname-p 
-                 (uiop:strcat MAXPACKDIR (cdr (uiop:split-string line :separator "/")))))
-        (if 
-        (maxpack--git-clone (str
-
+(uiop:run-program (uiop:strcat "curl -O https://beta.quicklisp.org/quicklisp.lisp")) 
+(load "quicklisp.lisp")
+(quicklisp-quickstart:install)
+(ql:add-to-init-file) ;; create init file if not exists $HOME/.sbclrc
+(ql:quickload "cl-ppcre") ;; for regular expressions

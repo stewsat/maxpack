@@ -17,6 +17,16 @@ else
   exit
 fi
 
+if [ -d $HOME/quicklisp ]; then
+  echo "Quicklisp: ok"
+else
+  echo "Quicklisp must be installed, do you want to install it?"
+  yon=$(read -p)
+  if [ "$yon" == "yes" ] || [ "$yon" == "y" ]; then
+    sbcl --script install_quicklisp.lisp
+  fi
+fi
+
 mkdir -p $HOME/.maxpack/{packages}
 
 git clone https://github.com/achengli/maxpack.git $HOME/.maxpack/tmp/maxpack
