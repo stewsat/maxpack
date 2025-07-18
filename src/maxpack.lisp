@@ -7,6 +7,11 @@
 (require :asdf)
 (ql:quickload "cl-ppcre")
 
+(defparameter *pkg-list* 
+  "`pkg-list' is a package container having the information of pluged packages
+  using the function `maxpack#plug'."
+  '())
+
 (defconstant *MAXPACK-DIR* (concatenate 'string (uiop:getenv "HOME") "/.maxpack"))
 (defconstant *MAXPACK-PACKAGES-DIR* (concatenate 'string *MAXPACK-DIR* "/packages"))
 
@@ -38,6 +43,7 @@
 ;; BEGIN MAXPACK functions
 ;; ---
 ;; Converts package metainfo to assoc
+;; TODO test function
 (defun maxpack#--parse-package-list (package-list-file)
   "Split package.list file parsing it to assoc list with
   selected parameters defined as follows."
@@ -58,27 +64,72 @@
 
 
 ;; Perform git clone call with github as default server.
-(defun maxpack#--git-clone (url &key (server :github))
-  (let ((
+;; TODO test function
+(defun maxpack#--git-clone (url &key (server :github) (version :latest))
+  (let* ((host (if (equal server :github) "https://github.com/" url))
+        (pkg (if (equal server :github) (concat host url) url))
+        (pkg-split (uiop:split-string url :separator "/"))
+        (pkg-name (car (reverse pkg-split)))
+        (pkg-owner (car (cdr (reverse pkg-split))))
+        (destiny (join "/" *MAXPACK-DIR* pkg-name
+                       (if (stringp version)
+                         version
+                         "latest"))))
+    (uiop:run-program (concat "git clone " pkg " " destiny 
+                              (if (equal version :latest) "" (concat " --branch " version))))))
   
-;; Plug packages to install
-(defun maxpack#plug (pkg &key (version :latest) (host :github))
+;; Install package
+;; TODO test function
+(defun maxpack#install (pkg &key (version :latest) (host :github))
   (let ((pkg-split (uiop:split-string pkg :separator "/"))
         (pkg-owner (car pkg-split))
         (pkg-name (cdr pkg-split)))
-  (if (equal version :latest)
-    (when (not (probe-file (concat *MAXPACK-DIR* "/packages/" pkg-name "/latest")))
-      (progn
-        (ensure-directories-exist (concat *MAXPACK-DIR* "/packages" pkg-name "/latest"))
-        (let ((url (if (equal host :github)
-                     pkg (join "/" host pkg-owner pkg-name))))
-        (maxpack#--git-clone url :server host)) 
+    (if (equal version :latest)
+      (when (not (probe-file (concat *MAXPACK-PACKAGES-DIR*  pkg-name "/latest")))
+        (progn
+          (ensure-directories-exist (concat *MAXPACK-PACKAGES-DIR* pkg-name "/latest"))
+          (let ((url (if (equal host :github)
+                       pkg (join "/" pkg-owner pkg-name))))
+            (maxpack#--git-clone url :server host :version version))))
+      (when (not (probe-file (concat *MAXPACK-PACKAGES-DIR* pkg-name version)))
+        (progn
+          (ensure-directories-exist (concat *MAXPACK-PACKAGES-DIR* pkg-name "/" version))
+          (let ((url (if (equal host :github)
+                       pkg (join "/" pkg-owner pkg-name))))
+            (maxpack#--git-clone url :server host :version version)))))))
 
-(defmacro strcat (&rest strings)
-  `(concatenate 'string ,@strings))
+;; Plug a package
+;; TODO test function
+(defun maxpack#plug (pkg &key (version :latest) (host :github))
+  (let* ((pkg-split (uiop:split-string pkg :separator "/"))
+        (pkg-name (car (reverse pkg-split)))
+        (pkg-owner (car (cdr (reverse pkg-split))))
+        (pkg-assoc (list
+                     (cons 'name pkg-name)
+                     (cons 'owner pkg-owner)
+                     (cons 'version version)
+                     (cons 'host host))))
+    (setq *pkg-list* (append *pkg-list* (list pkg-assoc)))))
 
-(defun maxpack#install ()
-  (dolist (pkg (maxpack#--parse-package-list (concatenate 'string *MAXPACK-DIR* "/package.list")))
-    (if (probe-file (strcat *MAXPACK-DIR* "/packages/" (get-ref 'package pkg)))
-      (if (probe-file (strcat 
-    
+;; Uninstall package 
+(defun maxpack#remove (pkg &key (version :latest))
+  (let* ((pkg-split (uiop:split-string pkg :separator "/"))
+         (pkg-name (car (reverse pkg-split)))
+         (pkg-owner (car (cdr (reverse pkg-split)))))
+  (when (probe-file (join "/" *MAXPACK-PACKAGES-DIR* pkg-owner pkg-name))
+    (uiop:delete-directory-tree (pathname (join "/" *MAXPACK-PACKAGES-DIR* pkg-owner pkg-name))
+                                :validate nil))))
+
+;; Get installed packages 
+;; TODO : ensure functionality
+(defun maxpack#ensure-installed () ;; --> Give an assoc list with installed packages.
+  (let* ((pkg-dir-list (uiop:split-string 
+                         (uiop:run-program (concat "ls " *MAXPACK-PACKAGES-DIR*)) :separator #(#\NewLine)))
+         (pkg-dirs (mapcar (lambda (x) (car (reverse (pathname-directory x)))) pkg-dir-list)))
+    (loop for dir in pkg-dirs do
+          (let* ((pkg-subdir (uiop:split-string 
+                               (uiop:run-program (concat "ls " *MAXPACK-PACKAGES-DIR* "/" dir)) :separator #(#\NewLine)))
+                 (pkg-versions 
+                   (mapcar (lambda (x) (list (cons 'name dir) (cons 'version (car (reverse (pathname-directory x)))))))))
+            pkg-versions))))
+            
