@@ -16,38 +16,40 @@
   Parse a package spec: 'user/repo', 'user/repo@tag', or full git URL.
   Returns (values name version url).
   "
-  (let* ((At-Pos (position #\@ Spec :from-end t))
-         (Base (if At-Pos (subseq Spec 0 At-Pos) Spec))
-         (Version (if At-Pos (subseq Spec (1+ At-Pos)) "latest")))
-    (cond
-      ((uiop:string-prefix-p "https://" Base)
-       (let* ((Stripped (string-right-trim "/" (string-right-trim ".git" Base)))
-              (Name (car (last (uiop:split-string Stripped :separator "/")))))
-         (values Name Version Base)))
-      ((uiop:string-prefix-p "git@" Base)
-       (let* ((Colon (position #\: Base))
-              (Name (if Colon
-                        (string-right-trim ".git" (subseq Base (1+ Colon)))
-                        Base)))
-         (values Name Version Base)))
-      (t
-       (let* ((Parts (uiop:split-string Base :separator "/"))
-              (User (first Parts))
-              (Repo (second Parts)))
-         (if (and User Repo)
-             (values Repo Version
-                     (format nil "https://github.com/~a/~a.git" User Repo))
-             (values Base Version Base)))))))
+  (flet ((Strip-Git-Suffix (S)
+           (string-right-trim ".git" S)))
+    (let* ((At-Pos (position #\@ Spec :from-end t))
+           (Base (if At-Pos (subseq Spec 0 At-Pos) Spec))
+           (Version (if At-Pos (subseq Spec (1+ At-Pos)) "latest")))
+      (cond
+        ((uiop:string-prefix-p "https://" Base)
+         (let* ((Stripped (string-right-trim "/" (Strip-Git-Suffix Base)))
+                (Name (car (last (uiop:split-string Stripped :separator "/")))))
+           (values Name Version Base)))
+        ((uiop:string-prefix-p "git@" Base)
+         (let* ((Colon (position #\: Base))
+                (Name (if Colon
+                          (Strip-Git-Suffix (subseq Base (1+ Colon)))
+                          Base)))
+           (values Name Version Base)))
+        (t
+         (let* ((Parts (uiop:split-string Base :separator "/"))
+                (User (first Parts))
+                (Repo (second Parts)))
+           (if (and User Repo)
+               (values (Strip-Git-Suffix Repo) Version
+                       (format nil "https://github.com/~a/~a.git" User (Strip-Git-Suffix Repo)))
+               (values (Strip-Git-Suffix Base) Version Base))))))))
 
+(defun Parse-Package-Name (Spec)
+  "
+  Extract just the package name from a spec string (strip .git, user/ prefix, etc).
+  "
+  (multiple-value-bind (Name Version) (Parse-Package-Spec Spec)
+    (declare (ignore Version))
+    Name))
 ;; ── Package directory layout ────────────────────────────────────────────────
 ;;
-;;   ~/.maxpack/
-;;     pkg-name/
-;;       latest/      ← default install, gets updated on 'update'
-;;       v1.0.3/      ← specific version install
-;;       v0.9.0/
-;;     other-pkg/
-;;       v2.0.0/
 
 (defun Package-Dir (Name Version)
   "
@@ -128,7 +130,14 @@
       (when (string= Pkg-Name Name)
         (return (cons Name (cons (Version-From-Ver-Dir Ver-Dir) Ver-Dir)))))))
 
-;; ── Git operations ──────────────────────────────────────────────────────────
+(defun Delete-Dir (Path)
+  "
+  Safely delete a directory tree. Accepts strings or pathnames.
+  "
+  (let ((Dir (if (stringp Path)
+                 (uiop:ensure-directory-pathname Path)
+                 Path)))
+    (uiop:delete-directory-tree Dir :validate t :if-does-not-exist :ignore)))
 
 (defun Git-Clone (Url Target-Dir)
   (Print-Line "Cloning ~a ..." Url)
@@ -271,34 +280,40 @@
   Remove an installed package. If Version is nil, remove ALL versions.
   "
   (if Version
-      (let ((Target (Find-Installed Pkg-Name Version)))
-        (if Target
-            (progn
-              (Print-Line "Removing ~a@~a ..." Pkg-Name Version)
-              (uiop:delete-directory-tree (namestring Target) :validate t)
-              (let ((Pkg-Dir (make-pathname :name nil :type nil :defaults Target)))
-                (when (and (uiop:directory-exists-p Pkg-Dir)
-                           (null (directory (concatenate 'string (namestring Pkg-Dir) "*/"))))
-                  (uiop:delete-directory-tree (namestring Pkg-Dir) :validate t)))
-              (Update-Asdf-Registry)
-              (Print-Line "Removed ~a@~a" Pkg-Name Version))
-            (Print-Line "Package ~a@~a is not installed." Pkg-Name Version)))
-      (let ((Removed 0))
-        (dolist (Ver-Dir (All-Version-Dirs))
-          (when (string= (Pkg-Name-From-Ver-Dir Ver-Dir) Pkg-Name)
-            (Print-Line "Removing ~a@~a ..." Pkg-Name (Version-From-Ver-Dir Ver-Dir))
-            (uiop:delete-directory-tree (namestring Ver-Dir) :validate t)
-            (incf Removed)))
-        (when (> Removed 0)
-          (let ((Pkg-Dir (concatenate 'string *Maxpack-Home-Dir* "/" Pkg-Name)))
+      (mUninstall-One Pkg-Name Version)
+      (mUninstall-All Pkg-Name)))
+
+(defun mUninstall-One (Pkg-Name Version)
+  (let ((Target (Find-Installed Pkg-Name Version)))
+    (if Target
+        (progn
+          (Print-Line "Removing ~a@~a ..." Pkg-Name Version)
+          (Delete-Dir Target)
+          (let ((Pkg-Dir (make-pathname :name nil :type nil :defaults Target)))
             (when (and (uiop:directory-exists-p Pkg-Dir)
-                       (null (directory (concatenate 'string Pkg-Dir "/*/"))))
-              (uiop:delete-directory-tree Pkg-Dir :validate t))))
-        (if (> Removed 0)
-            (progn
-              (Update-Asdf-Registry)
-              (Print-Line "Removed ~a (~d version~:p)" Pkg-Name Removed))
-            (Print-Line "Package ~a is not installed." Pkg-Name)))))
+                       (null (directory (concatenate 'string (namestring Pkg-Dir) "*/"))))
+              (Delete-Dir Pkg-Dir)))
+          (Update-Asdf-Registry)
+          (Print-Line "Removed ~a@~a" Pkg-Name Version))
+        (Print-Line "Package ~a@~a is not installed." Pkg-Name Version))))
+
+(defun mUninstall-All (Pkg-Name)
+  (let ((Removed 0))
+    (dolist (Ver-Dir (All-Version-Dirs))
+      (when (string= (Pkg-Name-From-Ver-Dir Ver-Dir) Pkg-Name)
+        (Print-Line "Removing ~a@~a ..." Pkg-Name (Version-From-Ver-Dir Ver-Dir))
+        (Delete-Dir Ver-Dir)
+        (incf Removed)))
+    (when (> Removed 0)
+      (let ((Pkg-Dir (concatenate 'string *Maxpack-Home-Dir* "/" Pkg-Name)))
+        (when (and (uiop:directory-exists-p Pkg-Dir)
+                   (null (directory (concatenate 'string Pkg-Dir "/*/"))))
+          (Delete-Dir Pkg-Dir))))
+    (if (> Removed 0)
+        (progn
+          (Update-Asdf-Registry)
+          (Print-Line "Removed ~a (~d version~:p)" Pkg-Name Removed))
+        (Print-Line "Package ~a is not installed." Pkg-Name))))
 
 (defun mRemove (Pkg-Name &optional Version)
   "
@@ -374,32 +389,33 @@
   "
   (let ((Command (string-downcase (or (first Args) "help")))
         (Target (second Args))
-        (Extra (third Args)))
+        (Extra (third Args))
+        (Pkg-Name (when (second Args) (Parse-Package-Name (second Args)))))
     (cond
       ((string= Command "install")
        (mInstall Target))
       ((string= Command "remove")
-       (if Target
-           (mRemove Target Extra)
+       (if Pkg-Name
+           (mRemove Pkg-Name Extra)
            (Print-Line "Usage: maxpack remove <package> [version]")))
       ((string= Command "list")
        (mList))
       ((string= Command "update")
        (mUpdate Target))
       ((string= Command "import")
-       (if Target
-           (mImport Target Extra)
+       (if Pkg-Name
+           (mImport Pkg-Name Extra)
            (Print-Line "Usage: maxpack import <package> [version]")))
       ((string= Command "exists")
-       (if Target
-           (let ((V (mExists Target Extra)))
+       (if Pkg-Name
+           (let ((V (mExists Pkg-Name Extra)))
              (if V
-                 (Print-Line "~a@~a is installed." Target V)
-                 (Print-Line "~a is not installed." Target)))
+                 (Print-Line "~a@~a is installed." Pkg-Name V)
+                 (Print-Line "~a is not installed." Pkg-Name)))
            (Print-Line "Usage: maxpack exists <package> [version]")))
       ((string= Command "info")
-       (if Target
-           (mInfo Target Extra)
+       (if Pkg-Name
+           (mInfo Pkg-Name Extra)
            (Print-Line "Usage: maxpack info <package> [version]")))
       ((string= Command "search")
        (mSearch Target))
@@ -424,4 +440,4 @@
        (Print-Line "")
        (Print-Line "Package directory layout:")
        (Print-Line "  $MAXPACK_HOME/pkg-name/latest/   — current version (updated via 'update')")
-       (Print-Line "  $MAXPACK_HOME/pkg-name/v1.0/     — specific version")))))
+        (Print-Line "  $MAXPACK_HOME/pkg-name/v1.0/     — specific version")))))
