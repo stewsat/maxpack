@@ -2,6 +2,8 @@
   :description "Maxima package manager."
   :author "Yassin Achengli"
   :license "MIT"
-  :depends-on (:cl-json :drakma :uiop)
+  :depends-on (:uiop)
   :serial t
-  :components ((:directory "maxpack")
+  :components ((:file "maxpack/utils")
+               (:file "maxpack/config")
+               (:file "maxpack/maxpack")))

@@ -1,0 +1,23 @@
+/*
+ * maxpack/src/init.mac
+ *
+ * Maxpack exports. Loaded when maxpack is imported into Maxima.
+ * All functions are defined in the Lisp package and available
+ * as maxpack#functionName in Maxima.
+ */
+
+maxpack#exports: [
+    [mImport,     ?mfuncall('mImport, args)],
+    [mInstall,    ?mfuncall('mInstall, args)],
+    [mList,       ?mfuncall('mList)],
+    [mUninstall,  ?mfuncall('mUninstall, args)],
+    [mRemove,     ?mfuncall('mRemove, args)],
+    [mExists,     ?mfuncall('mExists, args)],
+    [mUpdate,     ?mfuncall('mUpdate, args)],
+    [mInfo,       ?mfuncall('mInfo, args)],
+    [mVersion,    ?mfuncall('mVersion)]
+]$
+
+maxpack#version:   "0.1.0"$
+maxpack#author:    "achengli@github.com"$
+maxpack#homepage:  "https://github.com/achengli/maxpack"$

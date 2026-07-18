@@ -1,0 +1,31 @@
+/*
+ * maxpack/test/test_manifest.mac
+ *
+ * Test that maxpack itself follows the package architecture.
+ */
+kill(all)$
+load("maxpack")$
+
+/* Check that maxpack manifest is readable */
+block([],
+    print("Testing mImport of maxpack ..."),
+    maxpack#mImport("maxpack"),
+    print("  PASS")
+)$
+
+/* Check that mList works */
+block([],
+    print("Testing mList ..."),
+    maxpack#mList(),
+    print("  PASS")
+)$
+
+/* Check that mVersion works */
+block([],
+    print("Testing mVersion ..."),
+    r: maxpack#mVersion(),
+    print("  maxpack version:", r),
+    print("  PASS")
+)$
+
+print("All tests passed.")$

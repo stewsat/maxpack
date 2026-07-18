@@ -6,20 +6,45 @@
 ;;; Author:         Yassin Achengli Benmouais
 ;;; License:        BSD-3
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun --utils-maxpack-print-line (prompt-format  &rest args &key (stdout t))
-  "
-  @brief    Print formated string in a single line.
-  @key      `:stdout` outgoing way to print the content. If t is passed, the output
-            is going to be stdout, else it will be a returned string if it is nill
-            and otherwise, the stream passed as argument will be the outgoing gate.
-  @rest     format parameters.
-  @return   string in case of nil `:stdout` and t in the rest of cases except failures
-            that will return nil value.
-  "
-  (when (stringp prompt-format)
-    (apply #'format stdout (concatenate 'string prompt-format "~%") args)))
 
-(defun --utils-maxpack-get-metainfo ()
+(defpackage #:maxpack
+  (:use #:cl)
+  (:export
+   #:mImport
+   #:mInstall
+   #:mList
+   #:mUninstall
+   #:mRemove
+   #:mExists
+   #:mUpdate
+   #:mSearch
+   #:mInfo
+   #:mVersion
+   #:Maxpack-Cli))
+
+(in-package #:maxpack)
+
+(defun Print-Line (Prompt-Format &rest Args)
   "
-  @brief    Obtain information of maxpack package.
-  @key      
+  Print formated string to stdout with a trailing newline.
+  "
+  (when (stringp Prompt-Format)
+    (apply #'format t (concatenate 'string Prompt-Format "~%") Args)))
+
+(defun Trim (String)
+  "
+  Trim whitespace from both ends of a string.
+  "
+  (string-trim '(#\Space #\Tab #\Newline #\Return) String))
+
+(defun Split-String (String Separator)
+  "
+  Split a string by separator character.
+  "
+  (uiop:split-string String :separator Separator))
+
+(defun Dirname (Path)
+  "
+  Get the last directory component name from a pathname.
+  "
+  (car (last (pathname-directory Path))))

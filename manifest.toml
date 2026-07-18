@@ -1,0 +1,8 @@
+name = "maxpack"
+version = "0.1.0"
+author = "achengli@github.com"
+description = "Maxpack is a maxima package manager"
+license = "BSD-3"
+copyright = "BY-NC"
+repository = "https://github.com/achengli/maxpack.git"
+minver = "5.45.0"
