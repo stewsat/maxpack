@@ -92,24 +92,24 @@ https://gitlab.com/user/repo.git          # full git URL
 Once installed, maxpack is available inside Maxima via the `maxpack#` prefix:
 
 ```maxima
-maxpack#mImport("mypackage")$
-maxpack#mInstall("user/repo")$
-maxpack#mList()$
-maxpack#mUpdate()$
-maxpack#mUninstall("mypackage")$
+maxpackMImport("mypackage")$
+maxpackMInstall("user/repo")$
+maxpackMList()$
+maxpackMUpdate()$
+maxpackMUninstall("mypackage")$
 ```
 
 All CLI commands have a corresponding Maxima function:
 
 | CLI | Maxima |
 |---|---|
-| `maxpack install` | `maxpack#mInstall(pkg)` |
-| `maxpack remove` | `maxpack#mUninstall(pkg, ver)` |
-| `maxpack list` | `maxpack#mList()` |
-| `maxpack update` | `maxpack#mUpdate(pkg)` |
-| `maxpack import` | `maxpack#mImport(pkg, ver)` |
-| `maxpack exists` | `maxpack#mExists(pkg, ver)` |
-| `maxpack info` | `maxpack#mInfo(pkg, ver)` |
+| `maxpack install` | `maxpackMInstall(pkg)` |
+| `maxpack remove` | `maxpackMUninstall(pkg, ver)` |
+| `maxpack list` | `maxpackMList()` |
+| `maxpack update` | `maxpackMUpdate(pkg)` |
+| `maxpack import` | `maxpackMImport(pkg, ver)` |
+| `maxpack exists` | `maxpackMExists(pkg, ver)` |
+| `maxpack info` | `maxpackMInfo(pkg, ver)` |
 
 ## Package directory layout
 

@@ -3,10 +3,10 @@
  *
  * Maxpack exports. Loaded when maxpack is imported into Maxima.
  * All functions are defined in the Lisp package and available
- * as maxpack#functionName in Maxima.
+ * as maxpackFunctionName in Maxima.
  */
 
-maxpack#exports: [
+maxpackExports: [
     [mImport,     ?mfuncall('mImport, args)],
     [mInstall,    ?mfuncall('mInstall, args)],
     [mList,       ?mfuncall('mList)],
@@ -18,6 +18,6 @@ maxpack#exports: [
     [mVersion,    ?mfuncall('mVersion)]
 ]$
 
-maxpack#version:   "0.1.0"$
-maxpack#author:    "achengli@github.com"$
-maxpack#homepage:  "https://github.com/achengli/maxpack"$
+maxpackVersion:   "0.1.0"$
+maxpackAuthor:    "achengli@github.com"$
+maxpackHomepage:  "https://github.com/achengli/maxpack"$
