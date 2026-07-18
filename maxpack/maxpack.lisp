@@ -202,18 +202,24 @@
 
 ;; ── Public API ──────────────────────────────────────────────────────────────
 
+(defun mpHome ()
+  "
+  Return the maxpack home directory path.
+  Called from Maxima as ?mpHome().
+  "
+  *Maxpack-Home-Dir*)
+
 (defun mImport (Pkg-Name &optional Version)
   "
-  Import a package into the runtime. Ensures the package is installed,
-  resolves dependencies, and registers it with ASDF.
-  Returns t on success, nil if the package is not installed.
+  Import a package: resolve dependencies, register with ASDF.
+  Returns the package directory pathname on success, nil if not installed.
   "
   (let ((Pkg-Dir (or (Find-Installed Pkg-Name Version)
                      (let ((Found (Find-Any-Version Pkg-Name)))
                        (when Found (cddr Found))))))
     (if (not Pkg-Dir)
         (progn
-          (Print-Line "Package ~a is not installed. Use mInstall first." Pkg-Name)
+          (Print-Line "Package ~a is not installed. Use install first." Pkg-Name)
           nil)
         (let ((Manifest (Read-Manifest Pkg-Dir)))
           (when Manifest
@@ -221,7 +227,7 @@
           (push (truename Pkg-Dir) asdf:*central-registry*)
           (asdf:clear-source-registry)
           (Print-Line "Imported ~a" Pkg-Name)
-          t))))
+          Pkg-Dir))))
 
 (defun mExists (Pkg-Name &optional Version)
   "

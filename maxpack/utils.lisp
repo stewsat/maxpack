@@ -20,6 +20,7 @@
    #:mSearch
    #:mInfo
    #:mVersion
+   #:mpHome
    #:Maxpack-Cli))
 
 (in-package #:maxpack)

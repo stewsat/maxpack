@@ -1,23 +1,36 @@
 /*
  * maxpack/src/init.mac
  *
- * Maxpack exports. Loaded when maxpack is imported into Maxima.
- * All functions are defined in the Lisp package and available
- * as maxpackFunctionName in Maxima.
+ * Maxpack Maxima interface.
  */
 
+import(pkg) := load(sconcat(?mpHome(), "/", pkg, "/latest/src/init.mac"))$
+import(pkg, ver) := load(sconcat(?mpHome(), "/", pkg, "/", ver, "/src/init.mac"))$
+
+install() := ?mInstall()$
+install(pkg) := ?mInstall(pkg)$
+list() := ?mList()$
+remove(pkg) := ?mRemove(pkg)$
+remove(pkg, ver) := ?mRemove(pkg, ver)$
+update() := ?mUpdate()$
+update(pkg) := ?mUpdate(pkg)$
+exists(pkg) := ?mExists(pkg)$
+exists(pkg, ver) := ?mExists(pkg, ver)$
+info(pkg) := ?mInfo(pkg)$
+info(pkg, ver) := ?mInfo(pkg, ver)$
+version() := ?mVersion()$
+
 maxpackExports: [
-    [mImport,     ?mfuncall('mImport, args)],
-    [mInstall,    ?mfuncall('mInstall, args)],
-    [mList,       ?mfuncall('mList)],
-    [mUninstall,  ?mfuncall('mUninstall, args)],
-    [mRemove,     ?mfuncall('mRemove, args)],
-    [mExists,     ?mfuncall('mExists, args)],
-    [mUpdate,     ?mfuncall('mUpdate, args)],
-    [mInfo,       ?mfuncall('mInfo, args)],
-    [mVersion,    ?mfuncall('mVersion)]
+    [import,   import],
+    [install,  install],
+    [list,     list],
+    [remove,   remove],
+    [update,   update],
+    [exists,   exists],
+    [info,     info],
+    [version,  version]
 ]$
 
-maxpackVersion:   "0.1.0"$
-maxpackAuthor:    "achengli@github.com"$
-maxpackHomepage:  "https://github.com/achengli/maxpack"$
+maxpackVersion:  "0.1.0"$
+maxpackAuthor:   "achengli@github.com"$
+maxpackHomepage: "https://github.com/achengli/maxpack"$
