@@ -16,11 +16,9 @@
   Parse a package spec: 'user/repo', 'user/repo@tag', or full git URL.
   Returns (values name version url).
   "
-  (flet ((Strip-Git-Suffix (S)
-           (string-right-trim ".git" S)))
-    (let* ((At-Pos (position #\@ Spec :from-end t))
-           (Base (if At-Pos (subseq Spec 0 At-Pos) Spec))
-           (Version (if At-Pos (subseq Spec (1+ At-Pos)) "latest")))
+  (let* ((At-Pos (position #\@ Spec :from-end t))
+         (Base (if At-Pos (subseq Spec 0 At-Pos) Spec))
+         (Version (if At-Pos (subseq Spec (1+ At-Pos)) "latest")))
       (cond
         ((uiop:string-prefix-p "https://" Base)
          (let* ((Stripped (string-right-trim "/" (Strip-Git-Suffix Base)))
@@ -39,7 +37,7 @@
            (if (and User Repo)
                (values (Strip-Git-Suffix Repo) Version
                        (format nil "https://github.com/~a/~a.git" User (Strip-Git-Suffix Repo)))
-               (values (Strip-Git-Suffix Base) Version Base))))))))
+                (values (Strip-Git-Suffix Base) Version Base)))))))
 
 (defun Parse-Package-Name (Spec)
   "
@@ -139,17 +137,86 @@
                  Path)))
     (uiop:delete-directory-tree Dir :validate t :if-does-not-exist :ignore)))
 
+;; ── Manifest validation ─────────────────────────────────────────────────────
+
+(defun Strip-Git-Suffix (S)
+  "
+  Remove trailing .git from a string, if present.
+  Like 'foo.git' → 'foo', 'nonexistent' → 'nonexistent'.
+  "
+  (if (and S (uiop:string-suffix-p S ".git"))
+      (subseq S 0 (- (length S) 4))
+      S))
+
+(defun Github-Raw-Url (Git-Url)
+  "
+  Convert a GitHub git URL to a raw.githubusercontent.com URL.
+  https://github.com/user/repo.git → https://raw.githubusercontent.com/user/repo/main/manifest.toml
+  "
+  (let* ((Base (Strip-Git-Suffix Git-Url))
+         (Parts (uiop:split-string Base :separator "/"))
+         (User (nth (- (length Parts) 2) Parts))
+         (Repo (car (last Parts))))
+    (if (and User Repo (uiop:string-prefix-p "https://github.com/" Git-Url))
+        (format nil "https://raw.githubusercontent.com/~a/~a/main/manifest.toml" User Repo)
+        nil)))
+
+(defun Fetch-Manifest (Git-Url)
+  "
+  Try to download manifest.toml from a repository before cloning.
+  Returns the manifest alist on success, nil on failure.
+  "
+  (let ((Raw-Url (Github-Raw-Url Git-Url)))
+    (when Raw-Url
+      (Print-Line "Fetching manifest from ~a ..." Raw-Url)
+      (let* ((Tmp-Dir (concatenate 'string *Maxpack-Home-Dir* "/.tmp/"))
+             (Tmp-File (concatenate 'string Tmp-Dir "/manifest.toml")))
+        (handler-case
+            (progn
+              (uiop:ensure-all-directories-exist (list Tmp-File))
+              (uiop:run-program (list "curl" "-sL" "-o" Tmp-File Raw-Url)
+                                :output t :error-output t)
+              (when (uiop:file-exists-p Tmp-File)
+                (let ((Manifest (Read-Manifest Tmp-Dir)))
+                  (ignore-errors (uiop:delete-directory-tree Tmp-Dir :validate t :if-does-not-exist :ignore))
+                  Manifest)))
+          (error ()
+            (ignore-errors (uiop:delete-directory-tree Tmp-Dir :validate t :if-does-not-exist :ignore))
+            nil))))))
+
+(defun Validate-Manifest (Manifest)
+  "
+  Check that a manifest contains all mandatory fields.
+  Returns t if valid, nil otherwise.
+  "
+  (let ((Mandatory '("name" "version" "author" "repository" "description" "minver"))
+        (Valid t))
+    (dolist (Key Mandatory)
+      (unless (cdr (assoc Key Manifest :test #'string=))
+        (Print-Line "  Manifest missing mandatory field: ~a" Key)
+        (setf Valid nil)))
+    Valid))
+
 (defun Git-Clone (Url Target-Dir)
+  "
+  Clone a git repository from Url into Target-Dir.
+  "
   (Print-Line "Cloning ~a ..." Url)
   (uiop:run-program (list "git" "clone" Url Target-Dir)
                     :output t :error-output t))
 
 (defun Git-Pull (Dir)
+  "
+  Run git pull --rebase in the given directory.
+  "
   (Print-Line "Updating ~a ..." Dir)
   (uiop:run-program (list "git" "-C" (namestring Dir) "pull" "--rebase")
                     :output t :error-output t))
 
 (defun Git-Checkout (Dir Tag)
+  "
+  Checkout a specific tag or branch in a git repository.
+  "
   (uiop:run-program (list "git" "-C" (namestring Dir) "checkout" Tag)
                     :output t :error-output t))
 
@@ -185,16 +252,29 @@
 (defun %mInstall-One (Name Version Spec)
   "
   Internal: install a single package from a spec string.
+  Validates manifest.toml before cloning.
   "
   (multiple-value-bind (Pkg-Name Pkg-Version Url) (Parse-Package-Spec Spec)
     (declare (ignore Pkg-Name))
     (let ((Target-Dir (Package-Dir Name Version)))
       (unless (uiop:directory-exists-p Target-Dir)
-        (uiop:ensure-all-directories-exist (list (concatenate 'string Target-Dir "/")))
-        (Git-Clone Url (namestring Target-Dir))
-        (unless (string= Pkg-Version "latest")
-          (Git-Checkout Target-Dir Pkg-Version))
-        (Print-Line "Installed ~a@~a" Name Version))
+        ;; Validate manifest before cloning
+        (let ((Manifest (Fetch-Manifest Url)))
+          (if Manifest
+              (if (Validate-Manifest Manifest)
+                  (progn
+                    (Print-Line "Manifest validated for ~a@~a" Name Version)
+                    (uiop:ensure-all-directories-exist (list (concatenate 'string Target-Dir "/")))
+                    (Git-Clone Url (namestring Target-Dir))
+                    (unless (string= Pkg-Version "latest")
+                      (Git-Checkout Target-Dir Pkg-Version))
+                    (Print-Line "Installed ~a@~a" Name Version))
+                  (progn
+                    (Print-Line "Manifest validation failed for ~a. Install aborted." Name)
+                    (return-from %mInstall-One nil)))
+              (progn
+                (Print-Line "No manifest.toml found for ~a. Install aborted." Name)
+                (return-from %mInstall-One nil)))))
       (let ((Manifest (Read-Manifest Target-Dir)))
         (when Manifest
           (Ensure-Dependencies Manifest)))
@@ -290,6 +370,9 @@
       (mUninstall-All Pkg-Name)))
 
 (defun mUninstall-One (Pkg-Name Version)
+  "
+  Remove a single version of an installed package.
+  "
   (let ((Target (Find-Installed Pkg-Name Version)))
     (if Target
         (progn
@@ -304,6 +387,9 @@
         (Print-Line "Package ~a@~a is not installed." Pkg-Name Version))))
 
 (defun mUninstall-All (Pkg-Name)
+  "
+  Remove all installed versions of a package.
+  "
   (let ((Removed 0))
     (dolist (Ver-Dir (All-Version-Dirs))
       (when (string= (Pkg-Name-From-Ver-Dir Ver-Dir) Pkg-Name)
