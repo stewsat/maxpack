@@ -1,3 +1,8 @@
+# maxpack
+
+Copyright (c) Stewsat  
+Author: Yassin Achengli Benmouais
+
 ![maxpack](maxpack.png)
 
 ---

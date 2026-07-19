@@ -1,5 +1,7 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Copyright (c) 2026 BY-NC Yassin Achengli Benmouais <yassin_achengli@hotmail.com>
+;;; Copyright (c) Stewsat
+;;; Author: Yassin Achengli Benmouais
+;;; SPDX-License-Identifier: BSD
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Project:        maxpack 
 ;;; Description:    Maxima package manager for SBCL lisp implementation.

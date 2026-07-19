@@ -1,3 +1,7 @@
+;; Copyright (c) Stewsat
+;; Author: Yassin Achengli Benmouais
+;; SPDX-License-Identifier: BSD
+
 (asdf:defsystem :maxpack
   :description "Maxima package manager."
   :author "Yassin Achengli"
